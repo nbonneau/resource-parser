@@ -24,10 +24,10 @@ __config.json__
 ```json
 {
     "database": {
-        "name": "{DB_NAME}" // Replace {DB_NAME} by value of "DB_NAME" env
+        "name": "{DB_NAME}"
     },
-    "homeDir": "{HOME}/app", // Replace {HOME} by value of "HOME" env 
-    "publicDir": "{homeDir}/public" // Replace {homeDir} by value of "homeDir" key
+    "homeDir": "{HOME}/app",
+    "publicDir": "{homeDir}/public"
 }
 ```
 
@@ -44,12 +44,12 @@ __config.json__
 ```json
 {
     "imports": [
-        "parameters.json" // Will merge parsed content of parameter.json file
+        "parameters.json"
     ],
-    "database": {   // Key "host" will be added from parameters.json
-        "name": "{DB_NAME}" // Replace {DB_NAME} by value of "DB_NAME" env
+    "database": {
+        "name": "{DB_NAME}"
     },
-    "publicDir": "{parameters.homeDir}/public" // Replace {parameters.homeDir} by value of "parameters.homeDir" key
+    "publicDir": "{parameters.homeDir}/public"
 }
 ```
 
@@ -62,9 +62,9 @@ __parameters.json__
     },
     "parameters": {
         "imports": [
-            // Import other config files
+            
         ],
-        "homeDir": "{HOME}/app" // Replace {HOME} by value of "HOME" env 
+        "homeDir": "{HOME}/app"
     }
 }
 ```
