@@ -7,6 +7,16 @@ const ResourceParser = function () {
     return this;
 }
 
+ResourceParser.middleware = function resourceParserMiddleware() {
+
+    const data = ResourceParser.parse.apply(ResourceParser, arguments);
+
+    return function (req, res, next) {
+        req.config = JSON.parse(JSON.stringify(data));
+        next();
+    };
+}
+
 /**
  * Parser
  * 
@@ -15,20 +25,36 @@ const ResourceParser = function () {
  */
 ResourceParser.parse = function parse() {
 
+    let dirpath = null;
+    let filename = null;
     let refs = arguments[2] || arguments[1];
-    let dirpath = typeof arguments[1] === 'string' ? arguments[1] : null;
-
-    if (!dirpath) {
-        dirpath = typeof arguments[0] === 'object' && (Array.isArray(arguments[0].imports) || !arguments[0].imports || !arguments[0].imports.length)
-            ? arguments[1]
-            : path.dirname(arguments[0]);
-    }
-    
-    let data = typeof arguments[0] === 'object' ? arguments[0] : require(path.isAbsolute(arguments[0]) ? arguments[0] : path.join(dirpath, arguments[0].replace(dirpath, '')));
 
     if (typeof refs !== 'object') {
         refs = {};
     }
+
+    if (typeof arguments[0] === 'string') {
+
+        filename = path.basename(arguments[0]);
+
+        if (typeof arguments[1] === 'string') {
+            dirpath = path.join(arguments[1], path.dirname(arguments[0]));
+        } else if (path.isAbsolute(arguments[0])) {
+            dirpath = path.dirname(arguments[0]);
+        } else if (path.dirname(arguments[0]) === '.') {
+            dirpath = process.cwd();
+        } else {
+            dirpath = path.join(process.cwd(), path.dirname(arguments[0]));
+        }
+    } else if (typeof arguments[0] === 'object') {
+        if (typeof arguments[1] === 'string') {
+            dirpath = arguments[1];
+        }
+    } else {
+        throw new TypeError('first argument must be an object or a string');
+    }
+
+    let data = typeof arguments[0] === 'object' ? arguments[0] : require(path.join(dirpath, filename));
 
     data = ResourceParser.extendImports(data, dirpath);
 
@@ -44,14 +70,19 @@ ResourceParser.parse = function parse() {
  * @param {object} refs 
  * @return {object} parser data
  */
-ResourceParser.parseObject = function parseObject(data, refs = {}, target = {}) {
+ResourceParser.parseObject = function parseObject(data, refs, target = {}) {
+
+    if (!refs) {
+        throw new Error('missing references object argument');
+    }
+
     return Object.keys(data).reduce((acc, key) => {
         if (Array.isArray(data[key])) {
             acc[key] = ResourceParser.parseObject(data[key], refs, []);
         } else if (typeof data[key] === 'object') {
             acc[key] = ResourceParser.parseObject(data[key], refs);
         } else if (typeof data[key] === 'string') {
-            acc[key] = ResourceParser.parseValue(data[key], refs);
+            acc[key] = ResourceParser.parseString(data[key], refs);
         } else {
             acc[key] = data[key];
         }
@@ -65,14 +96,25 @@ ResourceParser.parseObject = function parseObject(data, refs = {}, target = {}) 
  * @param {string} val The string value to parse
  * @param {Object} refs The environment object
  */
-ResourceParser.parseValue = function parseValue(val, refs) {
+ResourceParser.parseString = function parseString(val, refs) {
 
     let find = true;
 
+    if (!refs) {
+        throw new Error('missing references object argument');
+    }
+
     while (ResourceParser.containReferences(val) && find) {
         ResourceParser.getReferences(val).forEach(match => {
-            const key = match.replace('{', '').replace('}', '');
+
+            let key = match.replace('{', '').replace('}', '');
+
+            if (new RegExp(/^\[.+(\..+)*\]$/g).test(key)) {
+                key = JSON.parse(key);
+            }
+
             const tmp = objectPath(refs);
+
             if (tmp.has(key)) {
                 const r = tmp.get(key);
                 if (val === match) {
@@ -101,7 +143,7 @@ ResourceParser.containReferences = function containReferences(value) {
 }
 
 ResourceParser.getReferences = function getReferences(value) {
-    return typeof value === 'string' ? value.match(new RegExp(/{\w+(\.\w+)*}/g)) || [] : [];
+    return typeof value === 'string' ? value.match(new RegExp(/{[a-zA-Z0-9,"\[\]\s\\\-_]+(\.[a-zA-Z0-9,"\[\]\s\\\-_]+)*}/g)) || [] : [];
 }
 
 /**

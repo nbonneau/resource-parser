@@ -1,6 +1,6 @@
 {
     "imports": [
-        "data.json"
+        "data/data.json"
     ],
     "parameters": {
         "test": "ok"

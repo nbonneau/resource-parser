@@ -6,6 +6,10 @@
     "config": {
         "ref": "{routes.test}"
     },
+    "test": {
+        "dot.dot": "key"
+    },
+    "ref": "{[\"test\", \"dot.dot\"]}",
     "paramRef": "{dataRef}",
     "configRef": true
 }

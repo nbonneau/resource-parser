@@ -1,7 +1,8 @@
 # Resource-parser
 
-Parse a JSON resource file using `.env` file and `process.env` data.
-Once resource parsed with env values, resource is parsed using itself, so you can make references to other object keys.
+Parse a JSON resource file or object using `.env` file and `process.env`. 
+This module allows you to refer to environment variables or keys in the object itself. 
+References are searched for in all strings of the object. A string can contain one or more references.
 
 ## Install
 
@@ -13,13 +14,36 @@ npm i --save resource-parser
 
 When resource loaded, it will be parser from `.env` and `process.env` data
 
+__Default usage__
+
 ```js
 const resourceParser = require('resource-parser');
 
+/* 
+    Resource can be a relative/absolute path, or an object
+    If resource is a relative path or an object with "imports" key, you must provide a dirpath as second argument
+*/
 const config = resourceParser('./config.json');
 ```
 
-__config.json__
+__Express usage__
+
+```js
+const resourceParser = require('resource-parser');
+const express = require('express');
+
+// ...
+
+const app = express();
+
+/* 
+    will add "config" key to "req" object
+    Config data is parsed during app loading and will be cloned for each request
+*/
+app.use(resourceParser.middleware('./config.json'));
+```
+
+*config.json*
 
 ```json
 {
@@ -67,4 +91,14 @@ __parameters.json__
         "homeDir": "{HOME}/app"
     }
 }
+```
+
+## Load resource with extra data
+
+```js
+const resourceParser = require('resource-parser');
+
+const config = resourceParser('./config.json'), {
+    key: 'value'
+};
 ```
