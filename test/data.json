@@ -1,0 +1,13 @@
+{
+    "imports": [
+
+    ],
+    "data": {
+        "test": "{parameters.test}",
+        "services": {
+            "test": {
+                "key": "value"
+            }
+        }
+    }
+}

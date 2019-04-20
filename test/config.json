@@ -1,0 +1,11 @@
+{
+    "imports": [
+        "parameters.json",
+        "routes.json"
+    ],
+    "config": {
+        "ref": "{routes.test}"
+    },
+    "paramRef": "{dataRef}",
+    "configRef": true
+}

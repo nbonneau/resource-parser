@@ -1,0 +1,9 @@
+{
+    "imports": [
+        "data.json"
+    ],
+    "parameters": {
+        "test": "ok"
+    },
+    "dataRef": "{configRef}"
+}

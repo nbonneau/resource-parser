@@ -1,102 +1,76 @@
-const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 const extend = require('extend');
 const objectPath = require('object-path');
 
 const ResourceParser = function () {
+    return this;
+}
 
-    /**
-     * Parser
-     * 
-     * @param {object} obj 
-     * @param {object} refs 
-     * @param {boolean} parseRefs 
-     */
-    this.parse = function parse(obj, refs, parseRefs = true) {
+/**
+ * Parser
+ * 
+ * @param {object} obj 
+ * @param {object} refs 
+ */
+ResourceParser.parse = function parse() {
 
-        const envs = this.extendEnvs(refs);
-        const data = this.parseFile(obj);
-        let parsed = this.parseData(data, envs);
+    let refs = arguments[2] || arguments[1];
+    let dirpath = typeof arguments[1] === 'string' ? arguments[1] : null;
 
-        parsed = this.parseData(parsed, parsed);
+    if (!dirpath) {
+        dirpath = typeof arguments[0] === 'object' && (Array.isArray(arguments[0].imports) || !arguments[0].imports || !arguments[0].imports.length)
+            ? arguments[1]
+            : path.dirname(arguments[0]);
+    }
+    
+    let data = typeof arguments[0] === 'object' ? arguments[0] : require(path.isAbsolute(arguments[0]) ? arguments[0] : path.join(dirpath, arguments[0].replace(dirpath, '')));
 
-        if (typeof obj === 'string') {
-            parsed = extend(true, parsed, this.extendImports(parsed.imports || [], path.dirname(obj), refs));
-            delete parsed.imports;
+    if (typeof refs !== 'object') {
+        refs = {};
+    }
+
+    data = ResourceParser.extendImports(data, dirpath);
+
+    const parsed = ResourceParser.parseObject(data, ResourceParser.extendEnvs(refs));
+
+    return ResourceParser.parseObject(parsed, parsed);
+}
+
+/**
+ * Parse data insing refs
+ * 
+ * @param {object} data 
+ * @param {object} refs 
+ * @return {object} parser data
+ */
+ResourceParser.parseObject = function parseObject(data, refs = {}, target = {}) {
+    return Object.keys(data).reduce((acc, key) => {
+        if (Array.isArray(data[key])) {
+            acc[key] = ResourceParser.parseObject(data[key], refs, []);
+        } else if (typeof data[key] === 'object') {
+            acc[key] = ResourceParser.parseObject(data[key], refs);
+        } else if (typeof data[key] === 'string') {
+            acc[key] = ResourceParser.parseValue(data[key], refs);
+        } else {
+            acc[key] = data[key];
         }
+        return acc;
+    }, target);
+}
 
-        if (parseRefs) {
-            parsed = this.parseData(parsed, parsed);
-        }
+/**
+ * Replace all env value inside a string
+ * 
+ * @param {string} val The string value to parse
+ * @param {Object} refs The environment object
+ */
+ResourceParser.parseValue = function parseValue(val, refs) {
 
-        return parsed;
-    }
+    let find = true;
 
-    /**
-     * Extend/parse file to import
-     * 
-     * @param {Array<string>} imports 
-     * @param {string} dirpath 
-     * @param {object} refs 
-     * @return {object}
-     */
-    this.extendImports = function extendImports(imports, dirpath, refs) {
-        return imports.reduce((acc, i) => {
-            acc = extend(true, {}, this.parse(path.join(dirpath, i), refs, false));
-            return acc;
-        }, {});
-    }
-
-    /**
-     * Extend env from refs, dotenv and process envs
-     * 
-     * @param {object} refs 
-     */
-    this.extendEnvs = function extendEnvs(refs) {
-        return extend(true, {}, refs, process.env, dotenv.config());
-    }
-
-    /**
-     * Parse data insing refs
-     * 
-     * @param {object} data 
-     * @param {object} refs 
-     * @return {object} parser data
-     */
-    this.parseData = function parseData(data, refs = {}, target = {}) {
-        return Object.keys(data).reduce((acc, key) => {
-            if (Array.isArray(data[key])) {
-                acc[key] = this.parseData(data[key], refs, []);
-            } else if (typeof data[key] === 'object') {
-                acc[key] = this.parseData(data[key], refs);
-            } else if (typeof data[key] === 'string') {
-                acc[key] = this.replaceRefs(data[key], refs);
-            } else {
-                acc[key] = data[key];
-            }
-            return acc;
-        }, target);
-    }
-
-    /**
-     * Parse json file from filepath
-     * 
-     * @param {string|object} filepath
-     * @return {object} json data 
-     */
-    this.parseFile = function parseFile(filepath) {
-        return typeof filepath === 'object' ? filepath : JSON.parse(fs.readFileSync(filepath));
-    }
-
-    /**
-     * Replace all env value inside a string
-     * 
-     * @param {string} val The string value to parse
-     * @param {Object} refs The environment object
-     */
-    this.replaceRefs = function replaceRefs(val, refs) {
-        (val.match(new RegExp(/{\w+(\.\w+)*}/g)) || []).forEach(match => {
+    while (ResourceParser.containReferences(val) && find) {
+        ResourceParser.getReferences(val).forEach(match => {
             const key = match.replace('{', '').replace('}', '');
             const tmp = objectPath(refs);
             if (tmp.has(key)) {
@@ -106,16 +80,71 @@ const ResourceParser = function () {
                 } else {
                     val = val.replace(match, tmp.get(key));
                 }
+
+                if (Array.isArray(val)) {
+                    val = ResourceParser.parseObject(val, refs, []);
+                } else if (typeof val === 'object') {
+                    val = ResourceParser.parseObject(val, refs);
+                }
+
+                find = true;
+            } else {
+                find = false;
             }
         });
-        return val;
+    }
+    return val;
+}
+
+ResourceParser.containReferences = function containReferences(value) {
+    return ResourceParser.getReferences(value).length > 0;
+}
+
+ResourceParser.getReferences = function getReferences(value) {
+    return typeof value === 'string' ? value.match(new RegExp(/{\w+(\.\w+)*}/g)) || [] : [];
+}
+
+/**
+ * Extend/parse file to import
+ * 
+ * @param {Array<string>} imports 
+ * @param {string} dirpath 
+ * @param {object} refs 
+ * @return {object}
+ */
+ResourceParser.extendImports = function extendImports(data, dirname) {
+
+    const merge = function (imports, dirname) {
+        return imports.reduce((acc, file) => {
+
+            let tmp = require(path.join(dirname, file));
+
+            tmp = extend(true, tmp, merge(tmp.imports || [], dirname));
+            delete tmp.imports;
+
+            acc = extend(true, acc, tmp);
+
+            return acc;
+        }, {});
     }
 
-    return this;
+    data = extend(true, data, merge(data.imports || [], dirname));
+    delete data.imports;
+
+    return data;
+}
+
+/**
+ * Extend env from refs, dotenv and process envs
+ * 
+ * @param {object} refs 
+ */
+ResourceParser.extendEnvs = function extendEnvs(refs = {}) {
+    return extend(true, {}, refs, process.env, dotenv.config());
 }
 
 exports = module.exports = function (obj, refs) {
-    return new ResourceParser().parse(obj, refs || {});
+    return ResourceParser.parse(obj || path.join(process.cwd(), 'config.json'), refs);
 };
 
 exports.ResourceParser = ResourceParser;

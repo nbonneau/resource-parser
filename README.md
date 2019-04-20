@@ -57,13 +57,13 @@ __parameters.json__
 
 ```json
 {
+    "imports": [
+        
+    ],
     "database": {
         "host": "{DB_HOST}"
     },
     "parameters": {
-        "imports": [
-            
-        ],
         "homeDir": "{HOME}/app"
     }
 }
