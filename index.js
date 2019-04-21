@@ -115,7 +115,7 @@ ResourceParser.parseString = function parseString(val, refs) {
 
             const tmp = objectPath(refs);
 
-            if (tmp.has(key)) {
+            if (tmp.has(key) && tmp.get(key) !== val) {
                 const r = tmp.get(key);
                 if (val === match) {
                     val = r;
