@@ -85,7 +85,7 @@ __parameters.json__
         
     ],
     "database": {
-        "host": "{DB_HOST}"
+        "host": "{DB_HOST || localhost}"
     },
     "parameters": {
         "homeDir": "{HOME}/app"

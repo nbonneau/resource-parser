@@ -139,6 +139,14 @@ exports.parseString = function parseString(val, refs) {
                     }
 
                     find = true;
+                } else if (new RegExp(/\|\|/g).test(key)) {
+
+                    const r = key.split('||').map(s => s.trim());
+                    while(r.length > 1 && !tmp.has(r[0])) {
+                        r.shift();
+                    }
+
+                    val = tmp.get(r[0], r[0]);
                 } else {
                     find = false;
                 }
@@ -161,7 +169,7 @@ exports.containReferences = function containReferences(value) {
  * @params {string} value
  */
 exports.getReferences = function getReferences(value) {
-    return typeof value === 'string' ? value.match(new RegExp(/{[a-zA-Z0-9,"\[\]\s\\\-_]+(\.[a-zA-Z0-9,"\[\]\s\\\-_]+)*}/g)) || [] : [];
+    return typeof value === 'string' ? value.match(new RegExp(/{[a-zA-Z0-9\|,"\[\]\s\\\-_]+(\.[a-zA-Z0-9\|,"\[\]\s\\\-_]+)*}/g)) || [] : [];
 }
 
 /**
