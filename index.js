@@ -3,13 +3,16 @@ const dotenv = require('dotenv');
 const extend = require('extend');
 const objectPath = require('object-path');
 
-const ResourceParser = function () {
-    return this;
-}
+exports = module.exports = function (obj, refs) {
+    return exports.parse(obj || path.join(process.cwd(), 'config.json'), refs);
+};
 
-ResourceParser.middleware = function resourceParserMiddleware() {
+/**
+ * Express middleware
+ */
+exports.middleware = function resourceParserMiddleware() {
 
-    const data = ResourceParser.parse.apply(ResourceParser, arguments);
+    const data = exports.parse.apply(exports, arguments);
 
     return function (req, res, next) {
         req.config = JSON.parse(JSON.stringify(data));
@@ -23,7 +26,7 @@ ResourceParser.middleware = function resourceParserMiddleware() {
  * @param {object} obj 
  * @param {object} refs 
  */
-ResourceParser.parse = function parse() {
+exports.parse = function parse() {
 
     let dirpath = null;
     let filename = null;
@@ -56,11 +59,11 @@ ResourceParser.parse = function parse() {
 
     let data = typeof arguments[0] === 'object' ? arguments[0] : require(path.join(dirpath, filename));
 
-    data = ResourceParser.extendImports(data, dirpath);
+    data = extendImports(data, dirpath);
 
-    const parsed = ResourceParser.parseObject(data, ResourceParser.extendEnvs(refs));
+    const parsed = exports.parseObject(data, extendEnvs(refs));
 
-    return ResourceParser.parseObject(parsed, parsed);
+    return exports.parseObject(parsed, parsed);
 }
 
 /**
@@ -70,7 +73,7 @@ ResourceParser.parse = function parse() {
  * @param {object} refs 
  * @return {object} parser data
  */
-ResourceParser.parseObject = function parseObject(data, refs, target = {}) {
+exports.parseObject = function parseObject(data, refs, isArray) {
 
     if (!refs) {
         throw new Error('missing references object argument');
@@ -78,16 +81,16 @@ ResourceParser.parseObject = function parseObject(data, refs, target = {}) {
 
     return Object.keys(data).reduce((acc, key) => {
         if (Array.isArray(data[key])) {
-            acc[key] = ResourceParser.parseObject(data[key], refs, []);
+            acc[key] = exports.parseObject(data[key], refs, true);
         } else if (typeof data[key] === 'object') {
-            acc[key] = ResourceParser.parseObject(data[key], refs);
+            acc[key] = exports.parseObject(data[key], refs);
         } else if (typeof data[key] === 'string') {
-            acc[key] = ResourceParser.parseString(data[key], refs);
+            acc[key] = exports.parseString(data[key], refs);
         } else {
             acc[key] = data[key];
         }
         return acc;
-    }, target);
+    }, isArray ? [] : {});
 }
 
 /**
@@ -96,7 +99,7 @@ ResourceParser.parseObject = function parseObject(data, refs, target = {}) {
  * @param {string} val The string value to parse
  * @param {Object} refs The environment object
  */
-ResourceParser.parseString = function parseString(val, refs) {
+exports.parseString = function parseString(val, refs) {
 
     let find = true;
 
@@ -106,8 +109,8 @@ ResourceParser.parseString = function parseString(val, refs) {
 
     const save = [];
 
-    while (ResourceParser.containReferences(val) && find) {
-        ResourceParser.getReferences(val).forEach(match => {
+    while (exports.containReferences(val) && find) {
+        exports.getReferences(val).forEach(match => {
 
             if (save.indexOf(match) === -1) {
 
@@ -130,9 +133,9 @@ ResourceParser.parseString = function parseString(val, refs) {
                     }
 
                     if (Array.isArray(val)) {
-                        val = ResourceParser.parseObject(val, refs, []);
+                        val = exports.parseObject(val, refs, []);
                     } else if (typeof val === 'object') {
-                        val = ResourceParser.parseObject(val, refs);
+                        val = exports.parseObject(val, refs);
                     }
 
                     find = true;
@@ -147,11 +150,17 @@ ResourceParser.parseString = function parseString(val, refs) {
     return val;
 }
 
-ResourceParser.containReferences = function containReferences(value) {
-    return ResourceParser.getReferences(value).length > 0;
+/**
+ * @params {string} value
+ */
+exports.containReferences = function containReferences(value) {
+    return exports.getReferences(value).length > 0;
 }
 
-ResourceParser.getReferences = function getReferences(value) {
+/**
+ * @params {string} value
+ */
+exports.getReferences = function getReferences(value) {
     return typeof value === 'string' ? value.match(new RegExp(/{[a-zA-Z0-9,"\[\]\s\\\-_]+(\.[a-zA-Z0-9,"\[\]\s\\\-_]+)*}/g)) || [] : [];
 }
 
@@ -163,7 +172,7 @@ ResourceParser.getReferences = function getReferences(value) {
  * @param {object} refs 
  * @return {object}
  */
-ResourceParser.extendImports = function extendImports(data, dirname) {
+function extendImports(data, dirname) {
 
     const merge = function (imports, dirname) {
         return imports.reduce((acc, file) => {
@@ -190,12 +199,6 @@ ResourceParser.extendImports = function extendImports(data, dirname) {
  * 
  * @param {object} refs 
  */
-ResourceParser.extendEnvs = function extendEnvs(refs = {}) {
+function extendEnvs(refs = {}) {
     return extend(true, {}, refs, process.env, dotenv.config());
 }
-
-exports = module.exports = function (obj, refs) {
-    return ResourceParser.parse(obj || path.join(process.cwd(), 'config.json'), refs);
-};
-
-exports.ResourceParser = ResourceParser;

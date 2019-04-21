@@ -40,7 +40,7 @@ const app = express();
     will add "config" key to "req" object
     Config data is parsed during app loading and will be cloned for each request
 */
-app.use(resourceParser.middleware('./config.json'));
+app.use(resourceParser.middleware('config.json'));
 ```
 
 *config.json*
@@ -60,7 +60,7 @@ app.use(resourceParser.middleware('./config.json'));
 ```js
 const resourceParser = require('resource-parser');
 
-const config = resourceParser('./config.json');
+const config = resourceParser('config.json');
 ```
 
 __config.json__
@@ -98,7 +98,41 @@ __parameters.json__
 ```js
 const resourceParser = require('resource-parser');
 
-const config = resourceParser('./config.json'), {
+const config = resourceParser('config.json'), {
     key: 'value'
 };
 ```
+
+## API
+
+Express middleware
+
+__resourceParser.middleware(config: object, dirpath?: string, refs?: object): function__
+
+__resourceParser.middleware(config: string, dirpath?: string, refs?: object): function__
+
+__resourceParser.middleware(config: string, refs?: object): function__
+
+Parse from file or object
+
+__resourceParser.parse(config: object, dirpath?: string, refs?: object): object__
+
+__resourceParser.parse(config: string, dirpath?: string, refs?: object): object__
+
+__resourceParser.parse(config: string, refs?: object): object__
+
+Parse `object` using `refs`
+
+__resourceParser.parseObject(obj: object, refs: object, isArray?: boolean): object__
+
+Parse string `value` using `refs`
+
+__resourceParser.parseString(value: string, refs: object): string__
+
+Test if `value` contains one or more references
+
+__resourceParser.containReferences(value: string): boolean__
+
+Extract references from `value`
+
+__resourceParser.getReferences(value: string): Array\<string\>__

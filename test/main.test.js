@@ -1,6 +1,6 @@
 const expect = require('chai').expect;
 
-const ResourceParser = require('../index').ResourceParser;
+const ResourceParser = require('../index');
 
 describe('resource-parser', function() {
     it('should get references', function() {
