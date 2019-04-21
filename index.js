@@ -104,32 +104,41 @@ ResourceParser.parseString = function parseString(val, refs) {
         throw new Error('missing references object argument');
     }
 
+    const save = [];
+
     while (ResourceParser.containReferences(val) && find) {
         ResourceParser.getReferences(val).forEach(match => {
 
-            let key = match.replace('{', '').replace('}', '');
+            if (save.indexOf(match) === -1) {
 
-            if (new RegExp(/^\[.+(\..+)*\]$/g).test(key)) {
-                key = JSON.parse(key);
-            }
+                save.push(match);
 
-            const tmp = objectPath(refs);
+                let key = match.replace('{', '').replace('}', '');
 
-            if (tmp.has(key) && tmp.get(key) !== val) {
-                const r = tmp.get(key);
-                if (val === match) {
-                    val = r;
+                if (new RegExp(/^\[.+(\..+)*\]$/g).test(key)) {
+                    key = JSON.parse(key);
+                }
+
+                const tmp = objectPath(refs);
+
+                if (tmp.has(key) && tmp.get(key) !== val) {
+                    const r = tmp.get(key);
+                    if (val === match) {
+                        val = r;
+                    } else {
+                        val = val.replace(match, tmp.get(key));
+                    }
+
+                    if (Array.isArray(val)) {
+                        val = ResourceParser.parseObject(val, refs, []);
+                    } else if (typeof val === 'object') {
+                        val = ResourceParser.parseObject(val, refs);
+                    }
+
+                    find = true;
                 } else {
-                    val = val.replace(match, tmp.get(key));
+                    find = false;
                 }
-
-                if (Array.isArray(val)) {
-                    val = ResourceParser.parseObject(val, refs, []);
-                } else if (typeof val === 'object') {
-                    val = ResourceParser.parseObject(val, refs);
-                }
-
-                find = true;
             } else {
                 find = false;
             }

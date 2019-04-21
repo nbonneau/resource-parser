@@ -84,7 +84,10 @@ describe('resource-parser', function() {
 
         const data = ResourceParser.parse({
             key: '{HOME}',
-            key0: '{key}/public'
+            key0: '{key}/public',
+            ref1: '{ref2}',
+            ref2: '{ref3}',
+            ref3: '{ref1}'
         });
 
         expect(data.key).to.equals(process.env.HOME);
